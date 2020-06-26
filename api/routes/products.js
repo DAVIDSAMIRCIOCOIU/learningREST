@@ -1,12 +1,44 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
+const multer = require('multer');
+
+/**Defines the extension of the file, the destination and the filename */
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + file.originalname);
+  }
+});
+
+/**Decides on the file extensions to be saved */
+const fileFilter = (req, file, cb) => {
+  if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+    // save file
+    cb(null, true);
+  } else {
+    // Reject a file
+    cb(null, false);
+  }
+}
+
+//Initialize multer
+// multer takes care of both req.file and req.body
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 1024 * 1024 * 5
+  },
+  fileFilter: fileFilter
+});
 
 const Product = require("../models/product");
 
 router.get("/", (req, res, next) => {
   Product.find()
-  .select('name price _id')
+  .select('name price _id productImage')
   .exec()
   .then(docs => {
     // Set the response object
@@ -17,6 +49,7 @@ router.get("/", (req, res, next) => {
         return {
           name: doc.name,
           price: doc.price,
+          productImage: doc.productImage,
           _id: doc._id,
           request: {
             type: 'GET',
@@ -35,14 +68,16 @@ router.get("/", (req, res, next) => {
   })
 });
 
-router.post("/", (req, res, next) => {
-  console.log(req.body.name);
+// upload.single tries to parse only one file which is in the specified field: productImage
+router.post("/", upload.single('productImage') ,(req, res, next) => {
+  console.log(req.file);
   // The below setup doesn't allow to add new fields as
   // we configure the product and never extract any extra props (never assign with req.body.propHere)
   const product = new Product({
     _id: new mongoose.Types.ObjectId(),
     name: req.body.name,
     price: req.body.price,
+    productImage: req.file.path
   });
   product
     .save()
@@ -77,11 +112,18 @@ router.get("/:productId", (req, res, next) => {
   // “Static methods are called without instantiating their
   //class and are also not callable when the class is instantiated
   Product.findById(id)
+  .select('name price _id productImage')
     .exec()
     .then((doc) => {
       console.log(doc);
       if(doc) {
-        res.status(200).json(doc);
+        res.status(200).json({
+          product: doc, 
+          request: {
+            type: 'GET',
+            url: 'http:/localhost:3000/products'
+          }
+        });
       } else {
         res.status(404).json({message: "No valid entry found for provided ID"})
       }
