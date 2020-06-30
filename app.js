@@ -40,6 +40,7 @@ app.use((req, res, next) => {
 // Use routes
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
+app.use('/user', userRoutes);
 
 
 //Error handling middleware: create the error if none of the routes above match with the user url req
