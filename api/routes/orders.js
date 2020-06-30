@@ -39,12 +39,13 @@ router.post("/", (req, res, next) => {
   // Check if we have a product for a given id
   Product.findById(req.body.productId)
     .then((prod) => {
-      // check against null
+      // check against null (if product not found)
       if (!prod) {
         return res.status(404).json({
           message: "Product not found",
         });
       }
+      // else create a new order and save it (saving will return a promise)
       const order = new Order({
         _id: mongoose.Types.ObjectId(),
         quantity: req.body.quantity,
@@ -82,6 +83,7 @@ router.get("/:orderId", (req, res, next) => {
   .populate('product')
     .exec()
     .then((order) => {
+      // check against null order (a null order will alwayes be returned even if there is no order)
       if (!order) {
         return res.status(404).json({
           message: "Order not found",
